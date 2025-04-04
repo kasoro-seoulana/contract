@@ -41,5 +41,11 @@ pub mod kasoro {
         Ok(())
     }
 
-}
+    pub fn submit_content(
+        ctx: Context<SubmitContent>,
+        text: String,
+        image_uri: String,
+    ) -> Result<()> {
+        vault_instruction::submit_content(ctx, text, image_uri)
+    }}
 
