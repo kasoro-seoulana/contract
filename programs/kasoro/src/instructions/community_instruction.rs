@@ -58,6 +58,12 @@ pub fn initialize_community(
     community.vote_period = 0;
     community.active = true;
     community.basefee_vault = basefee_vault_addr;
+    community.lst_addr = lst_addr;
+
+    // prizeRatio 초기화 (ratio와 len 설정)
+    // 나중에 수정하기@@@
+    community.prize_ratio.ratio = vec![0.4, 0.3, 0.2, 0.1];
+    community.prize_ratio.len = 4;
 
     Ok(())
 }

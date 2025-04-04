@@ -5,9 +5,9 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 pub use instructions::*;
 
-declare_id!("8ekNZbxSK8Zn2B4ATKPyKuYMWP42iv4e7tyaUQcR9uNs");
+declare_id!("38cVbT7EHqPwfXR1VgXA5jJiBe3DSAFr6cdCEPx4fbAv");
 
-pub const MASTER_WALLET: &str = "3CGS3fzHZzP6BBuM7oHe4YPxopMTkP4VCr1RixVVy43q";
+pub const MASTER_WALLET: &str = "wPrpTY68NWWQQqJbiHaiYNPMk2QRtgWBb3tmEj5nfxY";
 
 #[program]
 pub mod kasoro {

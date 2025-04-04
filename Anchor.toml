@@ -4,14 +4,14 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
+[programs.devnet]
 kasoro = "8ekNZbxSK8Zn2B4ATKPyKuYMWP42iv4e7tyaUQcR9uNs"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
