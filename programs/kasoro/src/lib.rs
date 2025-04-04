@@ -9,6 +9,14 @@ declare_id!("38cVbT7EHqPwfXR1VgXA5jJiBe3DSAFr6cdCEPx4fbAv");
 
 pub const MASTER_WALLET: &str = "wPrpTY68NWWQQqJbiHaiYNPMk2QRtgWBb3tmEj5nfxY";
 
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Invalid Program ID")]
+    InvalidProgramId,
+    #[msg("No deposit found for this depositor")]
+    NoDeposit,
+}
+
 #[program]
 pub mod kasoro {
 
@@ -47,5 +55,10 @@ pub mod kasoro {
         image_uri: String,
     ) -> Result<()> {
         vault_instruction::submit_content(ctx, text, image_uri)
-    }}
+    }
+    
+    pub fn claim_basefee(ctx: Context<ClaimBasefee>) -> Result<()> {
+        vault_instruction::claim_basefee(ctx)
+    }
+}
 

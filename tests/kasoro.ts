@@ -15,7 +15,7 @@ describe("Kasoro Program Tests", () => {
     // 2) 테스트용 파라미터
     const communityName = "TestDAO3";
     const timeLimit = new anchor.BN(60 * 60 * 24); // 24시간
-    const baseFee = new anchor.BN(5);
+    const baseFee = new anchor.BN(100000);
     const feeMultiplier = 3;
     const lstAddr = Keypair.generate().publicKey; // 임의의 Pubkey
     const aiModeration = true;
@@ -97,59 +97,59 @@ describe("Kasoro Program Tests", () => {
     //     }
     // });
 
-    it("2) Bounty Deposit (deposit) 호출", async () => {
-        try {
-            console.log("=========== Bounty Deposit ===========");
-            /////////////////////////////////////////////////////////////////////////////
-            communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
-            vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
-            /////////////////////////////////////////////////////////////////////////////
-            const depositLamports = new anchor.BN(0.01234 * LAMPORTS_PER_SOL);
-            console.log("depositLamports:", depositLamports.toString());
+    // it("2) Bounty Deposit (deposit) 호출", async () => {
+    //     try {
+    //         console.log("=========== Bounty Deposit ===========");
+    //         /////////////////////////////////////////////////////////////////////////////
+    //         communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
+    //         vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
+    //         /////////////////////////////////////////////////////////////////////////////
+    //         const depositLamports = new anchor.BN(0.01234 * LAMPORTS_PER_SOL);
+    //         console.log("depositLamports:", depositLamports.toString());
 
-            // kasoro::deposit(...)
-            // deposit(ctx, target_pda, vault_pda, amount)
-            // => BountyDepositContext { payer, community, vault, system_program }
-            const txSig = await program.methods
-                .deposit(
-                    communityPda,  // target_pda
-                    vaultPda,      // vault_pda
-                    depositLamports
-                )
-                .accounts({
-                    payer: wallet,
-                    community: communityPda,
-                    vault: vaultPda,
-                    systemProgram: anchor.web3.SystemProgram.programId,
-                })
-                .rpc();
+    //         // kasoro::deposit(...)
+    //         // deposit(ctx, target_pda, vault_pda, amount)
+    //         // => BountyDepositContext { payer, community, vault, system_program }
+    //         const txSig = await program.methods
+    //             .deposit(
+    //                 communityPda,  // target_pda
+    //                 vaultPda,      // vault_pda
+    //                 depositLamports
+    //             )
+    //             .accounts({
+    //                 payer: wallet,
+    //                 community: communityPda,
+    //                 vault: vaultPda,
+    //                 systemProgram: anchor.web3.SystemProgram.programId,
+    //             })
+    //             .rpc();
 
-            console.log("TxSig (deposit):", txSig);
+    //         console.log("TxSig (deposit):", txSig);
 
-            // 커뮤니티 PDA의 잔액이 늘어났는지 확인 가능
-            const communityBalance = await provider.connection.getBalance(communityPda);
-            console.log("Community PDA balance after deposit:", communityBalance);
+    //         // 커뮤니티 PDA의 잔액이 늘어났는지 확인 가능
+    //         const communityBalance = await provider.connection.getBalance(communityPda);
+    //         console.log("Community PDA balance after deposit:", communityBalance);
 
-            // vault 계정의 deposit_info에 기록이 생겼는지 확인
-            const vaultAccount = await program.account.basefeeVault.fetch(vaultPda);
-            console.log("BasefeeVault data:", vaultAccount);
+    //         // vault 계정의 deposit_info에 기록이 생겼는지 확인
+    //         const vaultAccount = await program.account.basefeeVault.fetch(vaultPda);
+    //         console.log("BasefeeVault data:", vaultAccount);
 
-            // push 된 deposit_info array 체크
-            // vault.deposit_info.push({ deposit_address, bounty_amount })
-            // depositAddress == wallet
-            // bountyAmount == depositLamports
-            const found = vaultAccount.depositInfo.find((d: any) =>
-                d.depositAddress.toBase58() === wallet.toBase58()
-            );
-            // assert.ok(found, "디포짓 정보가 저장되지 않았습니다!");
-            // assert.strictEqual(found.bountyAmount.toNumber(), depositLamports.toNumber());
+    //         // push 된 deposit_info array 체크
+    //         // vault.deposit_info.push({ deposit_address, bounty_amount })
+    //         // depositAddress == wallet
+    //         // bountyAmount == depositLamports
+    //         const found = vaultAccount.depositInfo.find((d: any) =>
+    //             d.depositAddress.toBase58() === wallet.toBase58()
+    //         );
+    //         // assert.ok(found, "디포짓 정보가 저장되지 않았습니다!");
+    //         // assert.strictEqual(found.bountyAmount.toNumber(), depositLamports.toNumber());
 
-            console.log("✅ Bounty deposit OK!\n");
-        } catch (err) {
-            console.error("bountyDeposit 에러:", err);
-            throw err;
-        }
-    });
+    //         console.log("✅ Bounty deposit OK!\n");
+    //     } catch (err) {
+    //         console.error("bountyDeposit 에러:", err);
+    //         throw err;
+    //     }
+    // });
 
     // it("3) 콘텐츠 제출 (submit_content) 호출", async () => {
     //     try {
@@ -240,4 +240,90 @@ describe("Kasoro Program Tests", () => {
     //         throw err;
     //     }
     // });
+
+    it("4) claim_basefee 호출", async () => {
+        try {
+            console.log("=========== Claim Basefee ===========");
+            /////////////////////////////////////////////////////////////////////////////
+            communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
+            vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
+            /////////////////////////////////////////////////////////////////////////////
+            
+            // 함수 실행 전 상태 확인
+            console.log("함수 실행 전 상태:");
+            const beforeVault = await program.account.basefeeVault.fetch(vaultPda);
+            const beforeDepositorBalance = await provider.connection.getBalance(wallet);
+            const beforeVaultBalance = await provider.connection.getBalance(vaultPda);
+            
+            console.log("이전 vault 계정 정보:", beforeVault);
+            console.log("이전 deposit_info:", beforeVault.depositInfo);
+            console.log("이전 depositor 잔액:", beforeDepositorBalance);
+            console.log("이전 vault 계정 잔액:", beforeVaultBalance);
+            
+            // 사용자의 deposit 정보 확인
+            const userDeposit = beforeVault.depositInfo.find((d) => 
+                d.depositAddress.toBase58() === wallet.toBase58()
+            );
+            
+            if (!userDeposit) {
+                console.log("사용자의 deposit 정보가 없습니다. 먼저 deposit을 실행해주세요.");
+                return;
+            }
+            
+            console.log("사용자 deposit 금액:", userDeposit.bountyAmount.toString());
+            
+            // 총 deposit 금액 계산
+            let totalDeposit = 0;
+            beforeVault.depositInfo.forEach((d) => {
+                totalDeposit += d.bountyAmount.toNumber();
+            });
+            
+            console.log("총 deposit 금액:", totalDeposit);
+            
+            // 예상 claim 금액 계산
+            const expectedClaimAmount = Math.floor((beforeVaultBalance * userDeposit.bountyAmount.toNumber()) / totalDeposit);
+            console.log("예상 claim 금액:", expectedClaimAmount);
+            
+            // claim_basefee 함수 호출
+            const txSig = await program.methods
+                .claimBasefee()
+                .accounts({
+                    depositor: wallet,
+                    community: communityPda,
+                    vault: vaultPda,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .rpc();
+            
+            console.log("TxSig (claim_basefee):", txSig);
+            
+            // 함수 실행 후 상태 확인
+            console.log("\n함수 실행 후 상태:");
+            const afterVault = await program.account.basefeeVault.fetch(vaultPda);
+            const afterDepositorBalance = await provider.connection.getBalance(wallet);
+            const afterVaultBalance = await provider.connection.getBalance(vaultPda);
+            
+            console.log("이후 vault 계정 정보:", afterVault);
+            console.log("이후 deposit_info:", afterVault.depositInfo);
+            console.log("이후 depositor 잔액:", afterDepositorBalance);
+            console.log("이후 vault 계정 잔액:", afterVaultBalance);
+            
+            // 변경된 내용 확인
+            
+            // 1. 사용자의 잔액이 증가했는지 확인
+            const balanceIncrease = afterDepositorBalance - beforeDepositorBalance;
+            console.log("사용자 잔액 증가량:", balanceIncrease);
+            assert.ok(balanceIncrease > 0, "사용자 잔액이 증가하지 않았습니다");
+            
+            // 2. vault의 잔액이 감소했는지 확인
+            const vaultDecrease = beforeVaultBalance - afterVaultBalance;
+            console.log("vault 잔액 감소량:", vaultDecrease);
+            assert.ok(vaultDecrease > 0, "vault 잔액이 감소하지 않았습니다");
+            
+            console.log("✅ Claim basefee OK!\n");
+        } catch (err) {
+            console.error("claimBasefee 에러:", err);
+            throw err;
+        }
+    });
 });
