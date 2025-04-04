@@ -257,8 +257,8 @@ describe("Kasoro Program Tests", () => {
             
             console.log("이전 vault 계정 정보:", beforeVault);
             console.log("이전 deposit_info:", beforeVault.depositInfo);
-            console.log("이전 depositor 잔액:", beforeDepositorBalance);
-            console.log("이전 vault 계정 잔액:", beforeVaultBalance);
+            console.log("이전 depositor 잔액:", beforeDepositorBalance/LAMPORTS_PER_SOL);
+            console.log("이전 vault 계정 잔액:", beforeVaultBalance/LAMPORTS_PER_SOL);
             
             // 사용자의 deposit 정보 확인
             const userDeposit = beforeVault.depositInfo.find((d) => 
@@ -278,11 +278,11 @@ describe("Kasoro Program Tests", () => {
                 totalDeposit += d.bountyAmount.toNumber();
             });
             
-            console.log("총 deposit 금액:", totalDeposit);
+            console.log("총 deposit 금액:", totalDeposit/LAMPORTS_PER_SOL);
             
             // 예상 claim 금액 계산
             const expectedClaimAmount = Math.floor((beforeVaultBalance * userDeposit.bountyAmount.toNumber()) / totalDeposit);
-            console.log("예상 claim 금액:", expectedClaimAmount);
+            console.log("예상 claim 금액:", expectedClaimAmount/LAMPORTS_PER_SOL);
             
             // claim_basefee 함수 호출
             const txSig = await program.methods
@@ -305,19 +305,19 @@ describe("Kasoro Program Tests", () => {
             
             console.log("이후 vault 계정 정보:", afterVault);
             console.log("이후 deposit_info:", afterVault.depositInfo);
-            console.log("이후 depositor 잔액:", afterDepositorBalance);
-            console.log("이후 vault 계정 잔액:", afterVaultBalance);
+            console.log("이후 depositor 잔액:", afterDepositorBalance/LAMPORTS_PER_SOL);
+            console.log("이후 vault 계정 잔액:", afterVaultBalance/LAMPORTS_PER_SOL);
             
             // 변경된 내용 확인
             
             // 1. 사용자의 잔액이 증가했는지 확인
             const balanceIncrease = afterDepositorBalance - beforeDepositorBalance;
-            console.log("사용자 잔액 증가량:", balanceIncrease);
+            console.log("사용자 잔액 증가량:", balanceIncrease/LAMPORTS_PER_SOL);
             assert.ok(balanceIncrease > 0, "사용자 잔액이 증가하지 않았습니다");
             
             // 2. vault의 잔액이 감소했는지 확인
             const vaultDecrease = beforeVaultBalance - afterVaultBalance;
-            console.log("vault 잔액 감소량:", vaultDecrease);
+            console.log("vault 잔액 감소량:", vaultDecrease/LAMPORTS_PER_SOL);
             assert.ok(vaultDecrease > 0, "vault 잔액이 감소하지 않았습니다");
             
             console.log("✅ Claim basefee OK!\n");
