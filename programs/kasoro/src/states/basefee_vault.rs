@@ -12,4 +12,3 @@ pub struct DepositersInfo {
     pub deposit_address: Pubkey,
     pub bounty_amount: u64,
 }
-

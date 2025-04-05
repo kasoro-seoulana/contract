@@ -1,39 +1,31 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Kasoro } from "../target/types/kasoro";  // 빌드된 IDL의 타입(이름은 실제와 맞추기)
+import { Kasoro } from "../target/types/kasoro";
 import { PublicKey, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import assert from "assert";
 
-describe("Kasoro Program Tests", () => {
-    // 1) Provider, Program 설정
+describe("Kasoro Program Tests - Full Flow", () => {
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
 
     const program = anchor.workspace.Kasoro as Program<Kasoro>;
     const wallet = provider.wallet.publicKey;
 
-    // 2) 테스트용 파라미터
-    const communityName = "TestDAO3";
-    const timeLimit = new anchor.BN(60 * 60 * 24); // 24시간
-    const baseFee = new anchor.BN(100000);
+    // 테스트용 기본 파라미터
+    const communityName = "TestDAO";
+    const timeLimit = new anchor.BN(60 * 60 * 24);
+    const baseFee = new anchor.BN(5);
     const feeMultiplier = 3;
-    const lstAddr = Keypair.generate().publicKey; // 임의의 Pubkey
+    const lstAddr = Keypair.generate().publicKey;
     const aiModeration = true;
+    const ratio = [0.9,0.1]; // 길이=1, 합=1.0
 
-    // 고정된 ratio 및 len 값 설정
-    const fixedRatio = [0.4, 0.3, 0.2, 0.1];
-    const fixedLen = 4;
-
-    // 커뮤니티 PDA
     let communityPda: PublicKey;
-    // Vault PDA
     let vaultPda: PublicKey;
 
+    // 1) PDA 계산
     {
-        // Rust 쪽 InitializeCommunity에서:
-        // seeds = ["community", initializer, communityName]
-        // seeds = ["vault", initializer, communityName]
-        const [commPda] = PublicKey.findProgramAddressSync(
+        const [cPda] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("community"),
                 wallet.toBuffer(),
@@ -41,9 +33,9 @@ describe("Kasoro Program Tests", () => {
             ],
             program.programId
         );
-        communityPda = commPda;
+        communityPda = cPda;
 
-        const [vltPda] = PublicKey.findProgramAddressSync(
+        const [vPda] = PublicKey.findProgramAddressSync(
             [
                 Buffer.from("vault"),
                 wallet.toBuffer(),
@@ -51,279 +43,132 @@ describe("Kasoro Program Tests", () => {
             ],
             program.programId
         );
-        vaultPda = vltPda;
+        vaultPda = vPda;
     }
 
-    // it("1) 커뮤니티를 초기화 (initialize)", async () => {
-    //     try {
-    //         console.log("=========== Initialize ===========");
-    //         console.log("Program ID:", program.programId.toBase58());
-    //         console.log("Initializer:", wallet.toBase58());
-    //         console.log("communityPda:", communityPda.toBase58());
-    //         console.log("vaultPda:", vaultPda.toBase58());
-    //         console.log("==================================");
-    //         // kasoro::initialize(...)
-    //         const txSig = await program.methods
-    //             .initialize(
-    //                 communityName,
-    //                 timeLimit,       // u64(BN)
-    //                 baseFee,         // u64(BN)
-    //                 feeMultiplier,   // u8
-    //                 lstAddr,         // Pubkey
-    //                 aiModeration     // bool
-    //             )
-    //             .accounts({
-    //                 initializer: wallet,
-    //                 community: communityPda,
-    //                 vault: vaultPda,             // vault Account
-    //                 systemProgram: anchor.web3.SystemProgram.programId,
-    //             })
-    //             .rpc();
+    // it(1) : 커뮤니티 초기화
+    it("1) initialize", async () => {
+        const txSig = await program.methods
+            .initialize(
+                communityName,
+                timeLimit,
+                baseFee,
+                feeMultiplier,
+                lstAddr,
+                aiModeration,
+                ratio // Vec<f32>
+            )
+            .accounts({
+                initializer: wallet,
+                community: communityPda,
+                vault: vaultPda,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .rpc();
 
-    //         console.log("TxSig (initialize):", txSig);
-    //         // 확인을 위해 fetch
-    //         const communityAccount = await program.account.communityState.fetch(communityPda);
-    //         console.log("CommunityState data:", communityAccount);
+        console.log("[initialize] txSig:", txSig);
 
-    //         // 간단 검증
-    //         // assert.strictEqual(communityAccount.communityName, communityName);
-    //         // assert.strictEqual(communityAccount.initBaseFee.toNumber(), baseFee.toNumber());
-    //         // assert.strictEqual(communityAccount.feeMultiplier, feeMultiplier);
-    //         // assert.strictEqual(communityAccount.aiModeration, aiModeration);
-    //         console.log("✅ 커뮤니티 초기화 OK!\n");
-    //     } catch (err) {
-    //         console.error("initializeCommunity 에러:", err);
-    //         throw err;
-    //     }
-    // });
-
-    // it("2) Bounty Deposit (deposit) 호출", async () => {
-    //     try {
-    //         console.log("=========== Bounty Deposit ===========");
-    //         /////////////////////////////////////////////////////////////////////////////
-    //         communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
-    //         vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
-    //         /////////////////////////////////////////////////////////////////////////////
-    //         const depositLamports = new anchor.BN(0.01234 * LAMPORTS_PER_SOL);
-    //         console.log("depositLamports:", depositLamports.toString());
-
-    //         // kasoro::deposit(...)
-    //         // deposit(ctx, target_pda, vault_pda, amount)
-    //         // => BountyDepositContext { payer, community, vault, system_program }
-    //         const txSig = await program.methods
-    //             .deposit(
-    //                 communityPda,  // target_pda
-    //                 vaultPda,      // vault_pda
-    //                 depositLamports
-    //             )
-    //             .accounts({
-    //                 payer: wallet,
-    //                 community: communityPda,
-    //                 vault: vaultPda,
-    //                 systemProgram: anchor.web3.SystemProgram.programId,
-    //             })
-    //             .rpc();
-
-    //         console.log("TxSig (deposit):", txSig);
-
-    //         // 커뮤니티 PDA의 잔액이 늘어났는지 확인 가능
-    //         const communityBalance = await provider.connection.getBalance(communityPda);
-    //         console.log("Community PDA balance after deposit:", communityBalance);
-
-    //         // vault 계정의 deposit_info에 기록이 생겼는지 확인
-    //         const vaultAccount = await program.account.basefeeVault.fetch(vaultPda);
-    //         console.log("BasefeeVault data:", vaultAccount);
-
-    //         // push 된 deposit_info array 체크
-    //         // vault.deposit_info.push({ deposit_address, bounty_amount })
-    //         // depositAddress == wallet
-    //         // bountyAmount == depositLamports
-    //         const found = vaultAccount.depositInfo.find((d: any) =>
-    //             d.depositAddress.toBase58() === wallet.toBase58()
-    //         );
-    //         // assert.ok(found, "디포짓 정보가 저장되지 않았습니다!");
-    //         // assert.strictEqual(found.bountyAmount.toNumber(), depositLamports.toNumber());
-
-    //         console.log("✅ Bounty deposit OK!\n");
-    //     } catch (err) {
-    //         console.error("bountyDeposit 에러:", err);
-    //         throw err;
-    //     }
-    // });
-
-    // it("3) 콘텐츠 제출 (submit_content) 호출", async () => {
-    //     try {
-    //         console.log("=========== Submit Content ===========");
-    //         /////////////////////////////////////////////////////////////////////////////
-    //         communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
-    //         vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
-    //         /////////////////////////////////////////////////////////////////////////////
-    //         // 테스트용 콘텐츠 데이터
-    //         const contentText = "테스트 콘텐츠2";
-    //         const imageUri = "https://example.com/test-image2.jpg";
-            
-    //         // 함수 실행 전 상태 확인
-    //         console.log("함수 실행 전 상태:");
-    //         const beforeCommunity = await program.account.communityState.fetch(communityPda);
-    //         const beforeVaultBalance = await provider.connection.getBalance(vaultPda);
-            
-    //         console.log("이전 prize_ratio:", beforeCommunity.prizeRatio);
-    //         console.log("이전 콘텐츠 개수:", beforeCommunity.contents.length);
-    //         console.log("이전 콘텐츠 목록:", beforeCommunity.contents);
-    //         console.log("이전 vault 계정 잔액:", beforeVaultBalance);
-            
-    //         // submit_content 함수 호출
-    //         const txSig = await program.methods
-    //             .submitContent(
-    //                 contentText, 
-    //                 imageUri
-    //             )
-    //             .accounts({
-    //                 author: wallet,
-    //                 community: communityPda,
-    //                 vault: vaultPda,
-    //                 systemProgram: anchor.web3.SystemProgram.programId,
-    //             })
-    //             .rpc();
-            
-    //         console.log("TxSig (submit_content):", txSig);
-            
-    //         // 함수 실행 후 상태 확인
-    //         console.log("\n함수 실행 후 상태:");
-    //         const afterCommunity = await program.account.communityState.fetch(communityPda);
-    //         const afterVaultBalance = await provider.connection.getBalance(vaultPda);
-            
-    //         console.log("이후 prize_ratio:", afterCommunity.prizeRatio);
-    //         console.log("이후 콘텐츠 개수:", afterCommunity.contents.length);
-    //         console.log("이후 콘텐츠 목록:", afterCommunity.contents);
-    //         console.log("이후 vault 계정 잔액:", afterVaultBalance);
-            
-    //         // 변경된 내용 확인
-            
-    //         // 1. 콘텐츠가 추가되었는지 확인
-    //         assert.strictEqual(afterCommunity.contents.length, beforeCommunity.contents.length + 1, 
-    //             "콘텐츠가 추가되지 않았습니다");
-            
-    //         // 2. 추가된 콘텐츠의 내용 확인
-    //         const lastContent = afterCommunity.contents[afterCommunity.contents.length - 1];
-    //         assert.strictEqual(lastContent.text, contentText, "콘텐츠 텍스트가 일치하지 않습니다");
-    //         assert.strictEqual(lastContent.imageUri, imageUri, "이미지 URI가 일치하지 않습니다");
-    //         assert.strictEqual(lastContent.author.toBase58(), wallet.toBase58(), "작성자가 일치하지 않습니다");
-            
-    //         // 3. 베이스 수수료가 vault로 이체되었는지 확인
-    //         const feeAmount = beforeCommunity.initBaseFee.toNumber();
-    //         assert.strictEqual(afterVaultBalance - beforeVaultBalance, feeAmount, 
-    //             "베이스 수수료가 vault로 올바르게 이체되지 않았습니다");
-            
-    //         // 4. 챌린저 목록이 업데이트되었는지 확인
-    //         // 4-1. 이전보다 챌린저가 더 많거나 같아야 함
-    //         assert.ok(
-    //             afterCommunity.prizeRatio.challengers.length >= beforeCommunity.prizeRatio.challengers.length,
-    //             "챌린저 목록이 업데이트되지 않았습니다"
-    //         );
-            
-    //         // 4-2. prize_ratio 챌린저 큐에 새로운 작성자가 추가되었는지 확인
-    //         const newChallengerAdded = afterCommunity.prizeRatio.challengers.some(
-    //             challenger => challenger.toBase58() === wallet.toBase58()
-    //         );
-    //         assert.ok(newChallengerAdded, "새로운 챌린저가 추가되지 않았습니다");
-            
-    //         // 5. 챌린저 큐가 고정 길이를 유지하는지 확인
-    //         assert.ok(
-    //             afterCommunity.prizeRatio.challengers.length <= afterCommunity.prizeRatio.len, 
-    //             "챌린저 큐가 최대 길이를 초과했습니다"
-    //         );
-            
-    //         console.log("✅ 콘텐츠 제출 OK!\n");
-    //     } catch (err) {
-    //         console.error("submitContent 에러:", err);
-    //         throw err;
-    //     }
-    // });
-
-    it("4) claim_basefee 호출", async () => {
-        try {
-            console.log("=========== Claim Basefee ===========");
-            /////////////////////////////////////////////////////////////////////////////
-            communityPda = new PublicKey("5GTddhhfBDwk3rLc6DpRce2rxWy23YWeAntvUxaPfm8");
-            vaultPda = new PublicKey("HMuRLhJBYiijLtRMN8YqRj6U79egrKHHZZBrYfTP31Fi");
-            /////////////////////////////////////////////////////////////////////////////
-            
-            // 함수 실행 전 상태 확인
-            console.log("함수 실행 전 상태:");
-            const beforeVault = await program.account.basefeeVault.fetch(vaultPda);
-            const beforeDepositorBalance = await provider.connection.getBalance(wallet);
-            const beforeVaultBalance = await provider.connection.getBalance(vaultPda);
-            
-            console.log("이전 vault 계정 정보:", beforeVault);
-            console.log("이전 deposit_info:", beforeVault.depositInfo);
-            console.log("이전 depositor 잔액:", beforeDepositorBalance/LAMPORTS_PER_SOL);
-            console.log("이전 vault 계정 잔액:", beforeVaultBalance/LAMPORTS_PER_SOL);
-            
-            // 사용자의 deposit 정보 확인
-            const userDeposit = beforeVault.depositInfo.find((d) => 
-                d.depositAddress.toBase58() === wallet.toBase58()
-            );
-            
-            if (!userDeposit) {
-                console.log("사용자의 deposit 정보가 없습니다. 먼저 deposit을 실행해주세요.");
-                return;
-            }
-            
-            console.log("사용자 deposit 금액:", userDeposit.bountyAmount.toString());
-            
-            // 총 deposit 금액 계산
-            let totalDeposit = 0;
-            beforeVault.depositInfo.forEach((d) => {
-                totalDeposit += d.bountyAmount.toNumber();
-            });
-            
-            console.log("총 deposit 금액:", totalDeposit/LAMPORTS_PER_SOL);
-            
-            // 예상 claim 금액 계산
-            const expectedClaimAmount = Math.floor((beforeVaultBalance * userDeposit.bountyAmount.toNumber()) / totalDeposit);
-            console.log("예상 claim 금액:", expectedClaimAmount/LAMPORTS_PER_SOL);
-            
-            // claim_basefee 함수 호출
-            const txSig = await program.methods
-                .claimBasefee()
-                .accounts({
-                    depositor: wallet,
-                    community: communityPda,
-                    vault: vaultPda,
-                    systemProgram: anchor.web3.SystemProgram.programId,
-                })
-                .rpc();
-            
-            console.log("TxSig (claim_basefee):", txSig);
-            
-            // 함수 실행 후 상태 확인
-            console.log("\n함수 실행 후 상태:");
-            const afterVault = await program.account.basefeeVault.fetch(vaultPda);
-            const afterDepositorBalance = await provider.connection.getBalance(wallet);
-            const afterVaultBalance = await provider.connection.getBalance(vaultPda);
-            
-            console.log("이후 vault 계정 정보:", afterVault);
-            console.log("이후 deposit_info:", afterVault.depositInfo);
-            console.log("이후 depositor 잔액:", afterDepositorBalance/LAMPORTS_PER_SOL);
-            console.log("이후 vault 계정 잔액:", afterVaultBalance/LAMPORTS_PER_SOL);
-            
-            // 변경된 내용 확인
-            
-            // 1. 사용자의 잔액이 증가했는지 확인
-            const balanceIncrease = afterDepositorBalance - beforeDepositorBalance;
-            console.log("사용자 잔액 증가량:", balanceIncrease/LAMPORTS_PER_SOL);
-            assert.ok(balanceIncrease > 0, "사용자 잔액이 증가하지 않았습니다");
-            
-            // 2. vault의 잔액이 감소했는지 확인
-            const vaultDecrease = beforeVaultBalance - afterVaultBalance;
-            console.log("vault 잔액 감소량:", vaultDecrease/LAMPORTS_PER_SOL);
-            assert.ok(vaultDecrease > 0, "vault 잔액이 감소하지 않았습니다");
-            
-            console.log("✅ Claim basefee OK!\n");
-        } catch (err) {
-            console.error("claimBasefee 에러:", err);
-            throw err;
-        }
+        const communityData = await program.account.communityState.fetch(communityPda);
+        console.log("Community data after init:", communityData);
+        // 검증
+        assert.equal(communityData.communityName, communityName);
     });
+
+    // it(2) : deposit
+    it("2) deposit", async () => {
+        const depositLamports = new anchor.BN(0.1 * LAMPORTS_PER_SOL);
+        const txSig = await program.methods
+            .deposit(communityPda, vaultPda, depositLamports)
+            .accounts({
+                payer: wallet,
+                community: communityPda,
+                vault: vaultPda,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .rpc();
+
+        console.log("[deposit] txSig:", txSig);
+        // 커뮤니티 PDA 잔액, vaultAccount deposit_info 등 확인
+        const communityBalance = await provider.connection.getBalance(communityPda);
+        console.log("communityPda balance:------------------", communityBalance);
+        const vaultAccount = await program.account.basefeeVault.fetch(vaultPda);
+        console.log("vault depositInfo:", vaultAccount.depositInfo);
+        // assert...
+    });
+
+    // it(3) : submitContent → 여기에 challenger 등록 로직
+    it("3) submitContent", async () => {
+        const text = "Hello anchor";
+        const imageUri = "https://somewhere.com/myimage.png";
+
+        // submitContent(author: wallet, community: communityPda, vault: vaultPda)
+        const txSig = await program.methods
+            .submitContent(text, imageUri)
+            .accounts({
+                author: wallet,
+                community: communityPda,
+                vault: vaultPda,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .rpc();
+
+        console.log("[submitContent] txSig:", txSig);
+
+        const txSig_ = await program.methods
+            .submitContent(text, imageUri)
+            .accounts({
+                author: wallet,
+                community: communityPda,
+                vault: vaultPda,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .rpc();
+
+        console.log("[submitContent] txSig:", txSig_);
+
+
+
+        const communityDa = await program.account.communityState.fetch(communityPda);
+        console.log("Community data after init:", communityDa);
+
+
+        // community.contents, community.prize_ratio.challengers
+        const communityData = await program.account.communityState.fetch(communityPda);
+        //console.log("Community data after submitContent:", communityData);
+
+        // 만약 submit_content 내부에서 prize_ratio.challengers.push(author) 했다면,
+        // challengers 배열 길이가 1이 되어야 bountyDistribute가 ratio_vec.len=1, challenger_vec.len=1 로 맞아떨어짐
+        assert.equal(communityData.contents.length, 2, "contents should have 1 item");
+        assert.equal(communityData.prizeRatio.challengers.length, 2, "challengers should have 1 item");
+
+
+        let beforeData = await provider.connection.getBalance(communityPda);
+        console.log("before" , beforeData);
+
+        const txSig1 = await program.methods
+            .bountyDistribute(
+                communityPda,
+                vaultPda
+            )
+            .accounts({
+                authority: wallet,
+                community: communityPda,
+                vault: vaultPda,
+                winner: wallet,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .rpc();
+
+
+
+        console.log("[claim] txSig:", txSig);
+        let afterData = await provider.connection.getBalance(communityPda);
+
+        console.log("after" , afterData);
+
+    });
+
+
+
+
 });

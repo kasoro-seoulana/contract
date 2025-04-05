@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-kasoro = "8ekNZbxSK8Zn2B4ATKPyKuYMWP42iv4e7tyaUQcR9uNs"
+kasoro = "CEnBjSSjuoL13LtgDeALeAMWqSg9W7t1J5rtjeKNarAM"
 
 [registry]
 url = "https://api.apr.dev"

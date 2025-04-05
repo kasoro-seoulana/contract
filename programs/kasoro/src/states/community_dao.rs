@@ -7,14 +7,15 @@ pub struct CommunityState {
     pub time_limit: u64, //
     pub init_base_fee: u64, //
     pub fee_multiplier: u8, //
-    pub prize_ratio: Challengers, //---------------------
+    pub prize_ratio: Challengers,
     pub voted: f32, //
     pub vote_period: u8, // day
-    pub lst_addr: Pubkey,         //---------------------
+    pub lst_addr: Pubkey,         //
     pub active : bool, //
     pub ai_moderation: bool, //
+    pub initializer: Pubkey,
 
-    #[max_len(5, 200)]
+    #[max_len(50)]
     pub contents: Vec<CreatorContent>, //---------------------
     pub basefee_vault: Pubkey, //
 }
@@ -37,4 +38,3 @@ pub struct CreatorContent {
     #[max_len(32)]
     pub image_uri: String,
 }
-
