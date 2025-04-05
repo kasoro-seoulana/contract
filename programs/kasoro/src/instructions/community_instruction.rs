@@ -172,22 +172,18 @@ pub fn re_derive_pda_bump(
 }
 
 
+
 #[derive(Accounts)]
 pub struct BountyDistributeContext<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    // 아래 부분을 수정해야 합니다!
-    /// CHECK: 이 계정은 실행 중 CommunityState로 검증됨
     #[account(mut)]
     pub community: Account<'info, CommunityState>,
 
     #[account(mut)]
     pub vault: Account<'info, BasefeeVault>,
 
-    /// CHECK: 단순 SOL 수령자
-    #[account(mut)]
-    pub winner: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -197,10 +193,56 @@ pub fn bounty_distribute(
     target_pda: Pubkey,
     vault_pda: Pubkey
 ) -> Result<()> {
-    // 커뮤니티와 community_address가 같은 PDA인지 확인
-    **ctx.accounts.community.to_account_info().try_borrow_mut_lamports()? -= 111;
-    **ctx.accounts.winner.to_account_info().try_borrow_mut_lamports()? += 111;
+
+    let ra =ctx.remaining_accounts;
+    let amount = ctx.accounts.community.get_lamports()* 9 /10;
+
+    msg!("{}", amount);
+    let mut ratios = vec![];
 
 
-    Ok(())
+    for i in 0..ra.len(){
+        ratios.push(ctx.accounts.community.prize_ratio.ratio[i]);
+    }
+
+    let (pda_address, pda_bump) = Pubkey::find_program_address(
+        &[
+            b"community",
+            &ctx.accounts.community.initializer.as_ref(),
+            ctx.accounts.community.community_name.as_bytes(),
+        ],
+        &crate::ID
+    );
+
+    require_keys_eq!(pda_address, ctx.accounts.community.key());
+
+    let signer_seeds: &[&[u8]] = &[
+        b"community",
+        &ctx.accounts.community.initializer.as_ref(),
+        ctx.accounts.community.community_name.as_bytes(),
+        &[pda_bump],
+    ];
+
+
+    if ratios.len() < 0 {
+        **ctx.accounts.community.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.community.to_account_info().try_borrow_mut_lamports()? -= amount;
+        Ok(())
+    }
+    else{
+        for i in 0..ra.len(){
+
+            let share = (amount as f32 * ratios[i]) as u64;
+
+            msg!("이거다 {}", ratios[i]);
+
+            **ctx.accounts.community.to_account_info().try_borrow_mut_lamports()? -= share;
+            **ra[i].to_account_info().try_borrow_mut_lamports()? += share;
+
+            msg!("통과!1");
+
+        }
+        Ok(())
+    }
+
 }
